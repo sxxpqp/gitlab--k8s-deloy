@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gitlab
+spec:
+  selector:
+    matchLabels:
+      app: gitlab
+  serviceName: gitlab
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: gitlab
+    spec:
+      containers:
+      - name: gitlab
+        image: gitlab/gitlab-ee:latest
+        ports:
+        - containerPort: 80
+          name: web
+        - containerPort: 443
+          name: ssl
+        - containerPort: 22
+          name: ssh    
+        volumeMounts:
+        - name: config
+          mountPath: /etc/gitlab
+        - name: logs
+          mountPath: /var/log/gitlab
+        - name: data
+          mountPath: /var/opt/gitlab
+        env:
+          - name: GITLAB_OMNIBUS_CONFIG
+            value: external_url 'http://gitlab.sxxpqp.top'  
+  volumeClaimTemplates:
+  - metadata:
+      name: config
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+  - metadata:
+      name: logs
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 500Gi                
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlab
+spec:
+  selector:
+    app: gitlab
+  ports:
+  - port: 80
+    name: web
+    targetPort: 80
+  - port: 443
+    name: ssl
+    targetPort: 443
+  - port: 22
+    name: ssh
+    targetPort: 22
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitlab
+  labels:
+    name: gitlab
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gitlab.sxxpqp.top
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: gitlab
+            port: 
+              number: 80
+    
